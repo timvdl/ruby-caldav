@@ -49,10 +49,10 @@ module CalDAV
             http
         end
     
-        def report start, stop
+        def report( start, stop )
             res = nil
             __create_http.start {|http|
-                req = Net::HTTP::Report.new(@url, initheader = {'Content-Type'=>'application/xml'} )
+                req = Net::HTTP::Report.new(@url, {'Content-Type'=>'application/xml'} )
                 req.basic_auth @user, @password
                 req.body = CalDAV::Request::ReportVEVENT.new( start, stop ).to_xml
                 res = http.request( req )
@@ -60,7 +60,7 @@ module CalDAV
             format.parse_calendar( res.body )
         end
         
-        def get uuid
+        def get( uuid )
             res = nil
             __create_http.start {|http|
                 req = Net::HTTP::Get.new("#{@url}/#{uuid}.ics")
@@ -72,39 +72,59 @@ module CalDAV
             format.parse_single( res.body )
         end
     
-        def delete uuid
+        def delete( uuid )
             __create_http.start {|http|
                 req = Net::HTTP::Delete.new("#{@url}/#{uuid}.ics")
                 req.basic_auth @user, @password
                 res = http.request( req )
             }
         end
-    
-        def create event
+
+        # FIXME
+        def __uuid_from_raw( data )
+          data.split("\n").each { |row| return $1 if row =~ /^UID:(.*)$/ }
+        end
+
+        def raw_put( data )
+            res = nil
+            uuid = __uuid_from_raw(data)
+            uuid ||= UUID.generate
+
+            http = Net::HTTP.new(@host, @port) 
+            __create_http.start { |http|
+                req = Net::HTTP::Put.new("#{@url}/#{uuid}.ics", {'Content-Type'=>'text/calendar'})
+                req.basic_auth @user, @password
+                req.body = data
+                res = http.request(req)
+            }
+            [uuid, res ]
+          end
+      
+          def create event
             nowstr = DateTime.now.strftime "%Y%m%dT%H%M%SZ"
             uuid   = UUID.generate
             dings  = """BEGIN:VCALENDAR
-PRODID:Caldav.rb
-VERSION:2.0
-BEGIN:VEVENT
-CREATED:#{nowstr}
-UID:#{uuid}
-SUMMARY:#{event.summary}
-DTSTART:#{event.dtstart.strftime("%Y%m%dT%H%M%S")}
-DTEND:#{event.dtend.strftime("%Y%m%dT%H%M%S")}
-END:VEVENT
-END:VCALENDAR"""
+  PRODID:Caldav.rb
+  VERSION:2.0
+  BEGIN:VEVENT
+  CREATED:#{nowstr}
+  UID:#{uuid}
+  SUMMARY:#{event.summary}
+  DTSTART:#{event.dtstart.strftime("%Y%m%dT%H%M%S")}
+  DTEND:#{event.dtend.strftime("%Y%m%dT%H%M%S")}
+  END:VEVENT
+  END:VCALENDAR"""
 
             res = nil
             http = Net::HTTP.new(@host, @port) 
             __create_http.start { |http|
                 req = Net::HTTP::Put.new("#{@url}/#{uuid}.ics")
-                req['Content-Type'] = 'text/calendar'
-                req.basic_auth @user, @password
-                req.body = dings
-                res = http.request( req )
+              req['Content-Type'] = 'text/calendar'
+              req.basic_auth @user, @password
+              req.body = dings
+              res = http.request(req)
             }
-            return uuid, res
+            [uuid, res]
         end
     
         def add_alarm tevent, altCal="Calendar"
@@ -148,7 +168,7 @@ EOL
             res = thttp.request( req )
             p res.inspect
     
-            return tevent.uid
+            tevent.uid
         end
         
         def update event
@@ -191,7 +211,7 @@ END:VCALENDAR"""
                 req.body = dings
                 res = http.request( req )
             }
-            return event.uid
+            event.uid
         end
     
         def todo 
@@ -214,7 +234,7 @@ END:VCALENDAR"""
                 data << l+"\n" unless inTZ 
                 inTZ = false if l.index("END:VTIMEZONE") 
             }
-            return data
+            data
         end
     end
 end

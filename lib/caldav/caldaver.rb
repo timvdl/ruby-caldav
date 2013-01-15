@@ -47,7 +47,7 @@ class CalDAVer
             o.on('-u', '--user [STRING}',     String, 'User (login)') { |l|   options[:login]    = l }
             o.on('--uri [STRING]',        String, 'Calendar URI') { |uri| options[:uri] = uri }
             o.on('--format [STRING]',     String, 'Format of output: raw,pretty,[debug]') { 
-                                                                    |fmt| options[:fmt] = fmt }
+                                                                    |fmt| options[:format] = fmt }
             ##o.on('--command [STRING]',    String, 'Command')      { |c|   options[:command] = c }
             o.on('--uuid [STRING]',       String, 'UUID')         { |u|   options[:uuid] = u }
             # what to create
@@ -87,9 +87,15 @@ class CalDAVer
         case options[:command].intern
         when :create
             obj = create_object( options )
+            p cal.raw_put(obj)
+
         when :delete
+            p cal.delete( options[:uuid] )
+
         when :modify
             obj = create_object( options )
+            p cal.raw_put(obj)
+
         when :get
             puts cal.get( options[:uuid] )
         when :report

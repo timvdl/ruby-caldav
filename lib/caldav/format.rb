@@ -12,7 +12,7 @@ module CalDAV
         class Pretty < Raw
             def parse_calendar( body )
                 result = []
-                xml = REXML::Document.new( res.body )
+                xml = REXML::Document.new( body )
                 REXML::XPath.each( xml, '//c:calendar-data/', { "c"=>"urn:ietf:params:xml:ns:caldav"} ){ |c|
                     result += parse_events( c.text )
                 }
@@ -42,13 +42,18 @@ module CalDAV
             end
 
             def parse_events( vcal )
-                return_events = Array.new
+                return_events = []
+                fmt = "%H:%M %e.%_m.%Y"
                 cals = Icalendar.parse(vcal)
                 cals.each { |tcal|
-                    tcal.events.each { |tevent|
-                        if tevent.recurrence_id.to_s.empty? # skip recurring events
-                            return_events << tevent
+                    tcal.events.each { |ev|
+                        # dtstamp, dtstart, dtend, location, transp, description, summary, priority, ip_slass, x-outlookmeeting, x-microsoft_cdo_importance (duration)
+                        if ev.dtend.nil?
+                          return_events << "%s (%s), %s : %s" % [ ev.dtstart.strftime(fmt), ev.duration, ev.location, ev.summary ]
+                        else
+                          return_events << "%s -- %s, %s: %s" % [ ev.dtstart.strftime(fmt), ev.dtend.strftime(fmt), ev.location, ev.summary ]
                         end
+                        # unless ev.recurrence_id.to_s.empty? # skip recurring events
                     }
                 }
                 return return_events
