@@ -15,7 +15,7 @@ module CalDAV
             case args.length
             when 3
                 __init_from_uri( *args )
-            when 5
+            when 6
                 __init_from_host_port( *args )
             else
                 raise "#{self.class.to_s}: invalid number of arguments: #{args.length}"
