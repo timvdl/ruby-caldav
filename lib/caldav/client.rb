@@ -32,12 +32,13 @@ module CalDAV
             @ssl      = uri.scheme == 'https'
         end
 
-        def __init_from_host_port( host, port, url, user, password )
+        def __init_from_host_port( host, port, url, calendar, user, password )
            @host     = host
            @port     = port
            @url      = url
            @user     = user
            @password = password
+           @calendar = calendar
            @ssl      = port == 443
         end
 
