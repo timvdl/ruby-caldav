@@ -1,7 +1,7 @@
 module CalDAV
     class Client
         include Icalendar
-        attr_accessor :host, :port, :url, :user, :password, :ssl
+        attr_accessor :host, :port, :url, :user, :calendar, :password, :ssl
 
         def format=( fmt )
             @format = fmt
@@ -28,7 +28,7 @@ module CalDAV
             @port     = uri.port
             @url      = [ uri.scheme, '://', uri.host, uri.path ].join('') # FIXME: port?
             @user     = user
-            @password = password 
+            @password = password
             @ssl      = uri.scheme == 'https'
         end
 
@@ -37,10 +37,10 @@ module CalDAV
            @port     = port
            @url      = url
            @user     = user
-           @password = password 
+           @password = password
            @ssl      = port == 443
         end
-    
+
         def __create_http
             http = Net::HTTP.new(@host, @port)
             http.use_ssl = @ssl
@@ -48,7 +48,7 @@ module CalDAV
             #http.set_debug_output $stderr
             http
         end
-    
+
         def report( start, stop )
             res = nil
             __create_http.start {|http|
@@ -59,7 +59,7 @@ module CalDAV
             }
             format.parse_calendar( res.body )
         end
-        
+
         def get( uuid )
             res = nil
             __create_http.start {|http|
@@ -71,7 +71,7 @@ module CalDAV
             # FIXME: process HTTP code
             format.parse_single( res.body )
         end
-    
+
         def delete( uuid )
             __create_http.start {|http|
                 req = Net::HTTP::Delete.new("#{@url}/#{uuid}.ics")
@@ -90,7 +90,7 @@ module CalDAV
             uuid = __uuid_from_raw(data)
             uuid ||= UUID.generate
 
-            http = Net::HTTP.new(@host, @port) 
+            http = Net::HTTP.new(@host, @port)
             __create_http.start { |http|
                 req = Net::HTTP::Put.new("#{@url}/#{uuid}.ics", {'Content-Type'=>'text/calendar'})
                 req.basic_auth @user, @password
@@ -99,13 +99,15 @@ module CalDAV
             }
             [uuid, res ]
           end
-      
+
           def create event
             nowstr = DateTime.now.strftime "%Y%m%dT%H%M%SZ"
             uuid   = UUID.generate
             dings  = """BEGIN:VCALENDAR
   PRODID:Caldav.rb
   VERSION:2.0
+  X-WR-RELCALID:#{@calendar}
+  X-WR-CALNAME:#{@calendar}
   BEGIN:VEVENT
   CREATED:#{nowstr}
   UID:#{uuid}
@@ -116,7 +118,7 @@ module CalDAV
   END:VCALENDAR"""
 
             res = nil
-            http = Net::HTTP.new(@host, @port) 
+            http = Net::HTTP.new(@host, @port)
             __create_http.start { |http|
                 req = Net::HTTP::Put.new("#{@url}/#{uuid}.ics")
               req['Content-Type'] = 'text/calendar'
@@ -126,9 +128,9 @@ module CalDAV
             }
             [uuid, res]
         end
-    
+
         def add_alarm tevent, altCal="Calendar"
-        #[#<Icalendar::Alarm:0x10b9d1b90 @name=\"VALARM\", @components={}, @properties={\"trigger\"=>\"-PT5M\", \"action\"=>\"DISPLAY\", \"description\"=>\"\"}>]    
+        #[#<Icalendar::Alarm:0x10b9d1b90 @name=\"VALARM\", @components={}, @properties={\"trigger\"=>\"-PT5M\", \"action\"=>\"DISPLAY\", \"description\"=>\"\"}>]
             dtstart_string = ( Time.parse(tevent.dtstart.to_s) + Time.now.utc_offset.to_i.abs ).strftime "%Y%m%dT%H%M%S"
             dtend_string = ( Time.parse(tevent.dtend.to_s) + Time.now.utc_offset.to_i.abs ).strftime "%Y%m%dT%H%M%S"
             alarmText = <<EOL
@@ -167,10 +169,10 @@ EOL
             req.body = alarmText
             res = thttp.request( req )
             p res.inspect
-    
+
             tevent.uid
         end
-        
+
         def update event
             dings = """BEGIN:VCALENDAR
 PRODID:Caldav.rb
@@ -203,7 +205,7 @@ DTSTART;TZID=Europe/Vienna:#{event.dtstart}
 DTEND;TZID=Europe/Vienna:#{event.dtend.rfc3339}
 END:VEVENT
 END:VCALENDAR"""
-    
+
             res = nil
             __create_http.start {|http|
                 req = Net::HTTP::Put.new("#{@url}/#{event.uid}.ics", initheader = {'Content-Type'=>'text/calendar'} )
@@ -213,8 +215,8 @@ END:VCALENDAR"""
             }
             event.uid
         end
-    
-        def todo 
+
+        def todo
             res = nil
             __create_http.start {|http|
                 req = Net::HTTP::Report.new(@url, initheader = {'Content-Type'=>'application/xml'} )
@@ -225,14 +227,14 @@ END:VCALENDAR"""
             # FIXME: process HTTP code
             format.parse_todo( res.body )
         end
-        
+
         def filterTimezone( vcal )
             data = ""
             inTZ = false
-            vcal.split("\n").each{ |l| 
-                inTZ = true if l.index("BEGIN:VTIMEZONE") 
-                data << l+"\n" unless inTZ 
-                inTZ = false if l.index("END:VTIMEZONE") 
+            vcal.split("\n").each{ |l|
+                inTZ = true if l.index("BEGIN:VTIMEZONE")
+                data << l+"\n" unless inTZ
+                inTZ = false if l.index("END:VTIMEZONE")
             }
             data
         end
