@@ -8,8 +8,8 @@ Gem::Specification.new do |s|
   s.homepage    = "https://github.com/martinpovolny/ruby-caldav"
   s.authors     = ["Martin Povolny"]
   s.email       = ["martin.povolny@gmail.com"]
-  
-  s.add_runtime_dependency 'rexml'
+
+  # s.add_runtime_dependency 'rexml'
   s.add_runtime_dependency 'icalendar'
   s.add_runtime_dependency 'uuid'
   s.add_runtime_dependency 'builder'
